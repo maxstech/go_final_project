@@ -13,7 +13,6 @@ func NextDate(now time.Time, date string, repeat string) (string, error) {
 	if repeat == "" {
 		return "", nil
 	}
-
 	if repeat == "w" {
 		return "", errors.New("правило повторения не реализуется")
 	}
@@ -21,7 +20,7 @@ func NextDate(now time.Time, date string, repeat string) (string, error) {
 		return "", errors.New("правило повторения не реализуется")
 	}
 
-	startDate, err := time.Parse("20060102", date)
+	startDate, err := time.Parse(DateFormat, date)
 	if err != nil {
 
 		return "", fmt.Errorf("некорректная дата: %v", err)
@@ -60,5 +59,5 @@ func NextDate(now time.Time, date string, repeat string) (string, error) {
 		return "", errors.New("неподдерживаемый формат правила повторения")
 	}
 
-	return nextDate.Format("20060102"), nil
+	return nextDate.Format(DateFormat), nil
 }

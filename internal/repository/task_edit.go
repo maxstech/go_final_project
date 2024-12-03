@@ -3,26 +3,23 @@ package repository
 import (
 	"database/sql"
 	"errors"
-	"log"
+	"final_project/internal/utils"
 	"regexp"
 	"time"
 )
 
 func isValidDate(date string) bool {
-
 	match, _ := regexp.MatchString(`^\d{8}$`, date)
 	if !match {
 		return false
 	}
 
-	_, err := time.Parse("20060102", date)
+	_, err := time.Parse(utils.DateFormat, date)
 	return err == nil
-
 }
 
 func isValidRepeat(repeat string) bool {
 	return repeat == "" || regexp.MustCompile(`^(d \d+|y)$`).MatchString(repeat)
-
 }
 
 func (r *Repository) GetTaskByID(id string) (Task, error) {
@@ -41,22 +38,13 @@ func (r *Repository) UpdateTask(task Task) error {
 	if !isValidDate(task.Date) {
 		return errors.New("некорректный формат даты; ожидается YYYYMMDD")
 	}
+
 	if !isValidRepeat(task.Repeat) {
 		return errors.New("некорректный формат для repeat")
 	}
-	if task.Title == "" {
-		return errors.New("заголовок не может быть пустым")
-	}
-
-	existingTask, err := r.GetTaskByID(task.ID)
-	if err != nil {
-		return err
-	}
-
-	log.Printf("обновление задачи: ID=%s, Date=%s, Title=%s, Comment=%s, Repeat=%s", existingTask.ID, task.Date, task.Title, task.Comment, task.Repeat)
 
 	query := "UPDATE scheduler SET date = ?, title = ?, comment = ?, repeat = ? WHERE id = ?"
-	result, err := r.db.Exec(query, task.Date, task.Title, task.Comment, task.Repeat, existingTask.ID)
+	result, err := r.db.Exec(query, task.Date, task.Title, task.Comment, task.Repeat, task.ID)
 	if err != nil {
 		return err
 	}

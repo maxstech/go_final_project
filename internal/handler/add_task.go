@@ -2,27 +2,14 @@ package handler
 
 import (
 	"encoding/json"
+	"final_project/internal/repository"
 	"final_project/internal/utils"
 	"log"
 	"net/http"
-	"time"
 )
 
-type Task struct {
-	Date    string `json:"date"`
-	Title   string `json:"title"`
-	Comment string `json:"comment,omitempty"`
-	Repeat  string `json:"repeat,omitempty"`
-}
-
 func (h *Handler) AddTask(w http.ResponseWriter, r *http.Request) {
-
-	if r.Method != http.MethodPost {
-		http.Error(w, "метод не разрешен", http.StatusMethodNotAllowed)
-		return
-	}
-
-	var task Task
+	var task repository.Task
 
 	if err := json.NewDecoder(r.Body).Decode(&task); err != nil {
 		http.Error(w, "ошибка десериализации JSON", http.StatusBadRequest)
@@ -30,37 +17,19 @@ func (h *Handler) AddTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if task.Title == "" {
-		http.Error(w, `{"error":"не указан заголовок задачи"}`, http.StatusBadRequest)
-		log.Println("Ошибка: не указан заголовок задачи")
-		return
-	}
-	now := time.Now()
-	nowString := now.Format("20060102")
-
-	if task.Date == "" {
-		task.Date = nowString
-	}
-	if _, err := time.Parse("20060102", task.Date); err != nil {
-		http.Error(w, `{"error":"ошибка формата даты"}`, http.StatusBadRequest)
-		log.Println("ошибка формата даты:", err)
+	if err := utils.ValidateTitle(task.Title); err != nil {
+		http.Error(w, `{"error":"`+err.Error()+`"}`, http.StatusBadRequest)
+		log.Println("Ошибка:", err)
 		return
 	}
 
-	if task.Date < nowString {
-		if task.Repeat == "" {
-			task.Date = nowString
-
-		} else {
-			nextDate, err := utils.NextDate(now, task.Date, task.Repeat)
-			if err != nil {
-				http.Error(w, `{"error":"`+err.Error()+`"}`, http.StatusBadRequest)
-				log.Println("ошибка вычисления следующей даты:", err)
-				return
-			}
-			task.Date = nextDate
-		}
+	validatedDate, err := utils.CheckDate(task.Date, task.Repeat)
+	if err != nil {
+		http.Error(w, `{"error":"`+err.Error()+`"}`, http.StatusBadRequest)
+		log.Println("ошибка валидации даты:", err)
+		return
 	}
+	task.Date = validatedDate
 
 	res, err := h.repo.AddTask(task.Title, task.Date, task.Comment, task.Repeat)
 	if err != nil {
@@ -84,6 +53,8 @@ func (h *Handler) AddTask(w http.ResponseWriter, r *http.Request) {
 		log.Println("ошибка формирования ответа:", err)
 		return
 	}
-	w.Write([]byte(responseJSON))
 
+	if _, err := w.Write(responseJSON); err != nil {
+		log.Println("ошибка записи в ResponseWriter:", err)
+	}
 }

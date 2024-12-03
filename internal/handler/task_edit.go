@@ -21,6 +21,7 @@ func (h *Handler) GetTask(w http.ResponseWriter, r *http.Request) {
 		log.Println("ошибка получения списка задач:", err)
 		return
 	}
+
 	var foundTask *repository.Task
 	for _, task := range tasks {
 		if task.ID == id {
@@ -48,8 +49,12 @@ func (h *Handler) UpdateTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Printf("Updating task: ID=%s, Date=%s, Title=%s, Comment=%s, Repeat=%s",
-		task.ID, task.Date, task.Title, task.Comment, task.Repeat)
+	log.Printf("Receive request to update task: ID=%s", task.ID)
+
+	if task.Title == "" {
+		http.Error(w, `{"error":"заголовок не может быть пустым"}`, http.StatusBadRequest)
+		return
+	}
 
 	err := h.repo.UpdateTask(task)
 	if err != nil {
@@ -57,6 +62,8 @@ func (h *Handler) UpdateTask(w http.ResponseWriter, r *http.Request) {
 		log.Println("ошибка обновления задачи:", err)
 		return
 	}
+
+	log.Printf("Task updated successfully: ID=%s", task.ID)
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
